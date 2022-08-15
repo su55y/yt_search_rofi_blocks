@@ -5,18 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
+	"time"
 
+	"github.com/su55y/yt_search_rofi_blocks/internal/blocks"
 	"github.com/su55y/yt_search_rofi_blocks/internal/config"
 	"github.com/su55y/yt_search_rofi_blocks/internal/consts"
+	"github.com/su55y/yt_search_rofi_blocks/internal/search"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -25,34 +25,9 @@ var (
 	conf    Config
 	appConf config.AppConfig
 
-	rawIn string
-	j_in  BlocksIn
-
-	vidRx = regexp.MustCompile("^id\\:[0-9a-zA-Z_-]{11}$")
-	npRx  = regexp.MustCompile("^(next|prev)\\:[a-zA-Z0-9-_]{6}$")
+	rawIn       string
+	blocksInput blocks.BlocksIn
 )
-
-type Blocks struct {
-	Massage string `json:"message"`
-	Overlay string `json:"overlay"`
-	Prompt  string `json:"prompt"`
-	Input   string `json:"input"`
-	Lines   []Line `json:"lines"`
-	ActEntr int    `json:"active entry"`
-}
-
-type Line struct {
-	Text   string `json:"text"`
-	Markup bool   `json:"markup"`
-	Icon   string `json:"icon"`
-	Data   string `json:"data"`
-}
-
-type BlocksIn struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-	Data  string `json:"data"`
-}
 
 type Config struct {
 	AppCachePath  string
@@ -61,8 +36,6 @@ type Config struct {
 	ConfPathRoot  string
 	CachePathRoot string
 	ConfFullPath  string
-
-	Q string
 }
 
 func exists(path string) bool {
@@ -111,13 +84,6 @@ func getAppConfig() {
 	}
 }
 
-func openInMPV(u string) {
-	err := exec.Command("setsid", []string{"-f", "mpv", u}...).Start()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func init() {
 	var err error
 	if conf.HomePath, err = os.UserHomeDir(); err != nil {
@@ -154,66 +120,6 @@ func init() {
 	}
 }
 
-func doSearch(service *youtube.Service, p string) *youtube.SearchListResponse {
-	call := service.Search.List([]string{"snippet"}).
-		Q(conf.Q).
-		RegionCode(appConf.Region).
-		MaxResults(appConf.MaxResults).
-		Type("video")
-	if len(p) == 6 {
-		call = call.PageToken(p)
-	}
-	res, err := call.Do()
-	if err != nil {
-		log.Fatalf("doSearch Do error: %v\n", err.Error())
-	}
-
-	return res
-}
-
-func getMesg(pageInfo *youtube.PageInfo) string {
-	return fmt.Sprintf(
-		"current page count: %d, total: %d",
-		pageInfo.ResultsPerPage,
-		pageInfo.TotalResults,
-	)
-}
-
-func showResult(list *youtube.SearchListResponse) []Line {
-	var lines []Line
-	for _, v := range list.Items {
-		l := Line{
-			Text: v.Snippet.Title,
-			Data: "id:" + v.Id.VideoId,
-		}
-
-		if !appConf.ThumbOff {
-			thumbUrl := v.Snippet.Thumbnails.Default.Url
-			switch appConf.ThumbSize {
-			case "high":
-				if len(v.Snippet.Thumbnails.High.Url) > 0 {
-					thumbUrl = v.Snippet.Thumbnails.High.Url
-				}
-			case "medium":
-				if len(v.Snippet.Thumbnails.Medium.Url) > 0 {
-					thumbUrl = v.Snippet.Thumbnails.Medium.Url
-				}
-			}
-
-			thumb, err := getThumb(v.Id.VideoId, thumbUrl)
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-
-			l.Icon = thumb
-		}
-
-		lines = append(lines, l)
-	}
-
-	return lines
-}
-
 func main() {
 	f, err := os.OpenFile(
 		filepath.Join(conf.AppCachePath, "log"),
@@ -225,160 +131,79 @@ func main() {
 	}
 	defer f.Close()
 	log.SetOutput(f)
-
-	// initial output
-	b := Blocks{
-		Lines:   []Line{},
-		Massage: "enter for search",
-	}
-
-	j, err := json.Marshal(&b)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(string(j))
-
 	ctx := context.Background()
 	yt, err := youtube.NewService(ctx, option.WithAPIKey(appConf.API_KEY))
 	if err != nil {
 		log.Fatalf("Unable to create YouTube service: %v", err)
 	}
 
+	searchService := search.NewSearchService(yt, appConf, conf.AppCachePath)
+
+	// initial output
+	blocksOutput := blocks.Blocks{
+		Lines:   []blocks.Line{},
+		Message: "enter for search",
+	}
+
+	j, err := json.Marshal(&blocksOutput)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(j))
+
 	inDecoder := json.NewDecoder(os.Stdin)
 
+	var runMPV bool
+
 	for {
-		if err := inDecoder.Decode(&j_in); err != nil {
+		if err := inDecoder.Decode(&blocksInput); err != nil {
 			log.Fatal(err)
 		}
 
-		switch j_in.Name {
+		switch blocksInput.Name {
 		case "execute custom input":
-			b.Lines = []Line{}
-			conf.Q = j_in.Value
-			list := doSearch(yt, "")
-			b.Massage = getMesg(list.PageInfo)
-			b.Lines = showResult(list)
-			b.Lines = append(b.Lines, Line{Text: "Next ->", Data: "next:" + list.NextPageToken})
+			searchService.NewQuery(blocksInput.Value)
+			blocksOutput = searchService.DoSearch("")
 		case "select entry":
-			if res, ok := parseToken(j_in.Data); ok {
-				switch res[0] {
-				case "id":
-					openInMPV("https://www.youtube.com/watch?v=" + res[1])
-					os.Exit(0)
-				case "next":
-					list := doSearch(yt, res[1])
-					b.Massage = getMesg(list.PageInfo)
-					b.Lines = showResult(list)
-					if len(list.NextPageToken) == 6 {
-						b.Lines = append(
-							b.Lines,
-							Line{Text: "Next ->", Data: "next:" + list.NextPageToken},
-						)
-					}
-					if len(list.PrevPageToken) == 6 {
-						b.Lines = append(
-							b.Lines,
-							Line{Text: "<- Prev", Data: "prev:" + list.PrevPageToken},
-						)
-					}
-				case "prev":
-					list := doSearch(yt, res[1])
-					b.Massage = getMesg(list.PageInfo)
-					b.Lines = showResult(list)
-					if len(list.NextPageToken) == 6 {
-						b.Lines = append(
-							b.Lines,
-							Line{Text: "Next ->", Data: "next:" + list.NextPageToken},
-						)
-					}
-					if len(list.PrevPageToken) == 6 {
-						b.Lines = append(
-							b.Lines,
-							Line{Text: "<- Prev", Data: "prev:" + list.PrevPageToken},
-						)
-					}
-				default:
-					b.Lines = []Line{}
-					b.Massage = "unkwnown input"
+			switch sel := blocks.ParseSelect(blocksInput.Data); sel.Action {
+			case "open":
+				blocksOutput.Message = sel.Message
+				blocksOutput.ActEntr = sel.Selected
+				if runMPV = openInMPV(sel.Id); !runMPV {
+					blocksOutput.Message += " : error"
 				}
+			case "next", "prev":
+				blocksOutput = searchService.DoSearch(sel.Id)
+			case "clear":
+				blocksOutput.Lines = []blocks.Line{}
+				blocksOutput.Message = sel.Message
+			case "err":
+				blocksOutput.Message = sel.Message
+			default:
+				blocksOutput.Message = "unkwnown error"
 			}
 		}
 
-		b.Prompt = ""
-
-		j, err = json.Marshal(&b)
+		j, err = json.Marshal(&blocksOutput)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		fmt.Println(string(j))
-
-	}
-
-}
-
-func parseToken(s string) ([]string, bool) {
-	if sub := strings.Split(s, ":"); len(sub) == 2 {
-		switch sub[0] {
-		case "id":
-			if vidRx.MatchString(s) && len(sub[1]) == 11 {
-				return sub, true
-			}
-		case "next", "prev":
-			if npRx.MatchString(s) && len(sub[1]) == 6 {
-				return sub, true
-			}
+		if runMPV {
+			time.Sleep(2 * time.Second)
+			os.Exit(0)
 		}
-	}
 
-	return []string{}, false
+	}
 }
 
-func getThumb(id, url string) (string, error) {
-	ext := filepath.Ext(filepath.Base(url))
-	if len(ext) == 0 && len(filepath.Base(url)) != 0 {
-		ext = ".jpg"
-	}
-	if len(filepath.Base(url)) == 0 {
-		return "", fmt.Errorf("can't read file from url:'%s'", url)
+func openInMPV(id string) bool {
+	c := exec.Command("mpv", "https://www.youtube.com/watch?v="+id)
+	if err := c.Start(); err != nil {
+		log.Println(err.Error())
+		return false
 	}
 
-	thumbName := "t" + id + ext
-	switch appConf.ThumbSize {
-	case "high":
-		thumbName = "h" + thumbName
-	case "medium":
-		thumbName = "m" + thumbName
-	default:
-		thumbName = "d" + thumbName
-	}
-
-	thumbPath := filepath.Join(conf.AppCachePath, thumbName)
-	if _, err := os.Stat(thumbPath); err == nil {
-		return thumbPath, nil
-	}
-
-	out, err := os.Create(thumbPath)
-	if err != nil {
-		return "", err
-	}
-	defer out.Close()
-
-	log.Printf("download thumb: %s\n", url)
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("get thumb status: %s", resp.Status)
-	}
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return thumbPath, nil
+	return c.Process.Pid > 0
 }
