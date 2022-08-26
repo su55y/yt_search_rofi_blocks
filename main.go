@@ -22,9 +22,9 @@ import (
 )
 
 var (
-	conf    Config
-	appConf config.AppConfig
-
+	conf        Config
+	appConf     config.AppConfig
+	pageNum     uint8 = 1
 	rawIn       string
 	blocksInput blocks.BlocksIn
 )
@@ -32,7 +32,6 @@ var (
 type Config struct {
 	AppCachePath  string
 	HomePath      string
-	NextPageToken string
 	ConfPathRoot  string
 	CachePathRoot string
 	ConfFullPath  string
@@ -138,6 +137,8 @@ func main() {
 	}
 
 	searchService := search.NewSearchService(yt, appConf, conf.AppCachePath)
+	inDecoder := json.NewDecoder(os.Stdin)
+	utils := blocks.Page{}
 
 	// initial output
 	blocksOutput := blocks.Blocks{
@@ -151,8 +152,6 @@ func main() {
 	}
 	fmt.Println(string(j))
 
-	inDecoder := json.NewDecoder(os.Stdin)
-
 	var runMPV bool
 
 	for {
@@ -163,7 +162,26 @@ func main() {
 		switch blocksInput.Name {
 		case "execute custom input":
 			searchService.NewQuery(blocksInput.Value)
-			blocksOutput = searchService.DoSearch("")
+			blocksOutput, utils = searchService.DoSearch("")
+		case "custom key":
+			if len(blocksOutput.Lines) > 0 {
+				switch blocksInput.Value {
+				case "1":
+					if len(utils.PrevToken) == 6 && pageNum > 1 {
+						pageNum--
+						blocksOutput, utils = searchService.DoSearch(utils.PrevToken)
+						blocksOutput.Message += fmt.Sprintf(" page: %d", pageNum)
+					}
+				case "2":
+					if len(utils.NextToken) == 6 && pageNum < 255 {
+						pageNum++
+						blocksOutput, utils = searchService.DoSearch(utils.NextToken)
+						blocksOutput.Message += fmt.Sprintf(" page: %d", pageNum)
+					}
+				default:
+					blocksOutput.Message = "unkwnown key"
+				}
+			}
 		case "select entry":
 			switch sel := blocks.ParseSelect(blocksInput.Data); sel.Action {
 			case "open":
@@ -173,7 +191,7 @@ func main() {
 					blocksOutput.Message += " : error"
 				}
 			case "next", "prev":
-				blocksOutput = searchService.DoSearch(sel.Id)
+				blocksOutput, utils = searchService.DoSearch(sel.Id)
 			case "clear":
 				blocksOutput.Lines = []blocks.Line{}
 				blocksOutput.Message = sel.Message

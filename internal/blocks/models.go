@@ -28,3 +28,8 @@ type Select struct {
 	Selected int
 	Message  string
 }
+
+type Page struct {
+	NextToken string
+	PrevToken string
+}

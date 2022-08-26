@@ -34,7 +34,7 @@ func (s *SearchService) NewQuery(q string) {
 	}
 }
 
-func (s *SearchService) DoSearch(page string) blocks.Blocks {
+func (s *SearchService) DoSearch(page string) (blocks.Blocks, blocks.Page) {
 	call := s.service.Search.List([]string{"snippet"}).
 		RegionCode(s.appConf.Region).
 		MaxResults(s.appConf.MaxResults).
@@ -51,9 +51,12 @@ func (s *SearchService) DoSearch(page string) blocks.Blocks {
 	}
 
 	return blocks.Blocks{
-		Lines:   s.getLines(res),
-		Message: getMesg(res.PageInfo),
-	}
+			Lines:   s.getLines(res),
+			Message: getMesg(res.PageInfo),
+		}, blocks.Page{
+			NextToken: res.NextPageToken,
+			PrevToken: res.PrevPageToken,
+		}
 }
 
 func getMesg(pageInfo *youtube.PageInfo) string {
