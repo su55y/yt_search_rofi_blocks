@@ -1,15 +1,27 @@
 package consts
 
 const (
+	// app consts
+	APP_NAME        = "yt_search_rofi_blocks"
+	APP_CONFIG_NAME = "config.yaml"
+
+	// input names
+	IN_EXECUTE_CUSTOM_ITEM = "execute custom input"
+	IN_CUSTOM_KEY          = "custom key"
+	IN_SELECT_ENTRY        = "select entry"
+
+	// app env names
 	ENV_YT_API_KEY   = "YT_SEARCH_API_KEY"
 	ENV_YT_CACHE_DIR = "YT_SEARCH_CACHE_DIR"
-	ENV_CACHE_HOME   = "XDG_CACHE_HOME"
-	ENV_CONFIG_HOME  = "XDG_CONFIG_HOME"
-	APP_NAME         = "yt_search_rofi_blocks"
-	APP_CONFIG_NAME  = "config.yaml"
-	DEF_CACHE_PATH   = ".cache"
-	DEF_CONFIG_PATH  = ".config/yt_search_rofi_blocks/config.yaml"
-	DEF_CONFIG       = `# youtube api key (https://console.cloud.google.com/)
+
+	// env
+	ENV_CACHE_HOME  = "XDG_CACHE_HOME"
+	ENV_CONFIG_HOME = "XDG_CONFIG_HOME"
+
+	// defaults
+	DEF_CACHE_PATH  = ".cache"
+	DEF_CONFIG_PATH = ".config/yt_search_rofi_blocks/config.yaml"
+	DEF_CONFIG      = `# youtube api key (https://console.cloud.google.com/)
 # api_key: "<YT_API_KEY>"
 # api_key_path: "/path/to/api_key"
 

@@ -160,10 +160,10 @@ func main() {
 		}
 
 		switch blocksInput.Name {
-		case "execute custom input":
+		case consts.IN_EXECUTE_CUSTOM_ITEM:
 			searchService.NewQuery(blocksInput.Value)
 			blocksOutput, utils = searchService.DoSearch("")
-		case "custom key":
+		case consts.IN_CUSTOM_KEY:
 			if len(blocksOutput.Lines) > 0 {
 				switch blocksInput.Value {
 				case "1":
@@ -182,7 +182,7 @@ func main() {
 					blocksOutput.Message = "unkwnown key"
 				}
 			}
-		case "select entry":
+		case consts.IN_SELECT_ENTRY:
 			switch sel := blocks.ParseSelect(blocksInput.Data); sel.Action {
 			case "open":
 				blocksOutput.Message = sel.Message

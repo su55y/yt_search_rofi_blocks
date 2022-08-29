@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"net/http"
@@ -72,7 +73,7 @@ func (s *SearchService) getLines(result *youtube.SearchListResponse) []blocks.Li
 	var err error
 	for i, v := range result.Items {
 		l := blocks.Line{
-			Text: fmt.Sprintf("%d) %s", i, v.Snippet.Title),
+			Text: fmt.Sprintf("%d) %s", i, html.UnescapeString(v.Snippet.Title)),
 			Data: fmt.Sprintf("%d:%s", i, v.Id.VideoId),
 		}
 
@@ -128,12 +129,13 @@ func (s *SearchService) getLines(result *youtube.SearchListResponse) []blocks.Li
 }
 
 func (s *SearchService) getThumb(id, url string) (string, error) {
+	if len(filepath.Base(url)) == 0 {
+		return "", fmt.Errorf("can't read file from url:'%s'", url)
+	}
+
 	ext := filepath.Ext(filepath.Base(url))
 	if len(ext) == 0 && len(filepath.Base(url)) != 0 {
 		ext = ".jpg"
-	}
-	if len(filepath.Base(url)) == 0 {
-		return "", fmt.Errorf("can't read file from url:'%s'", url)
 	}
 
 	thumbName := "t" + id + ext
