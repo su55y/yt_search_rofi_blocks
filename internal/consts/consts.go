@@ -42,7 +42,8 @@ thumbnails_disable: false
 thumbnails_size: "default"`
 
 	// info
-	INF_NEW_CONFIG = "new config written to %s"
+	INF_NEW_CONFIG   = "new config written to %s"
+	INF_SELECT_PARSE = "Can't read video id"
 
 	// errors
 	ERR_NO_API_KEY        = "api key was not found either in the config or in the env variable"

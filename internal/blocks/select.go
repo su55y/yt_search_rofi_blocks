@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/su55y/yt_search_rofi_blocks/internal/consts"
 )
 
 var (
@@ -12,21 +14,21 @@ var (
 
 // parse "select entry" event
 func ParseSelect(s string) Select {
-	var sel Select
-	if sub := strings.Split(s, ":"); len(sub) == 2 {
-		if vidRx.MatchString(s) && len(sub[1]) == 11 {
-			if d, err := strconv.Atoi(sub[0]); err == nil && d >= 0 {
-				sel.Action = "open"
-				sel.Id = sub[1]
-				sel.Message = "open " + sub[1]
-				sel.Selected = d
+	if sub := strings.Split(s, ":"); len(sub) == 2 &&
+		len(sub[1]) == 11 &&
+		vidRx.MatchString(s) {
+		if d, err := strconv.Atoi(sub[0]); err == nil && d >= 0 {
+			return Select{
+				Action:   "open",
+				Id:       sub[1],
+				Message:  "open " + sub[1],
+				Selected: d,
 			}
 		}
-		return sel
 	}
 
 	return Select{
 		Action:  "err",
-		Message: "Something went wrong...",
+		Message: consts.INF_SELECT_PARSE,
 	}
 }
