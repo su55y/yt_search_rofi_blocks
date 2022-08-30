@@ -98,33 +98,6 @@ func (s *SearchService) getLines(result *youtube.SearchListResponse) []blocks.Li
 		lines = append(lines, l)
 	}
 
-	if len(result.NextPageToken) == 6 {
-		lines = append(
-			lines,
-			blocks.Line{
-				Text: "Next >",
-				Data: "next:" + result.NextPageToken,
-			},
-		)
-	}
-	if len(result.PrevPageToken) == 6 {
-		lines = append(
-			lines,
-			blocks.Line{
-				Text: "< Prev",
-				Data: "prev:" + result.PrevPageToken,
-			},
-		)
-	}
-
-	lines = append(
-		lines,
-		blocks.Line{
-			Text: "Clear ",
-			Data: "cmd:clear",
-		},
-	)
-
 	return lines
 }
 

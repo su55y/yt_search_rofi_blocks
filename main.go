@@ -178,6 +178,10 @@ func main() {
 						blocksOutput, utils = searchService.DoSearch(utils.NextToken)
 						blocksOutput.Message += fmt.Sprintf(" page: %d", pageNum)
 					}
+				case "3":
+					blocksOutput.Message = "enter for search"
+					blocksOutput.Lines = []blocks.Line{}
+					pageNum = 1
 				default:
 					blocksOutput.Message = "unkwnown key"
 				}
@@ -190,11 +194,6 @@ func main() {
 				if runMPV = openInMPV(sel.Id); !runMPV {
 					blocksOutput.Message += " : error"
 				}
-			case "next", "prev":
-				blocksOutput, utils = searchService.DoSearch(sel.Id)
-			case "clear":
-				blocksOutput.Lines = []blocks.Line{}
-				blocksOutput.Message = sel.Message
 			case "err":
 				blocksOutput.Message = sel.Message
 			default:
