@@ -1,0 +1,138 @@
+configuration {
+  location: 0;
+  fixed-num-lines: false;
+  show-icons: true;
+  sidebar-mode: true;
+  scroll-method: 0;
+  click-to-exit: true;
+  disable-history: false;
+  display-yt: "yt search";
+  font: "NotoSans Nerd Font 18";
+}
+
+* {
+  background-color: rgba(0,0,0,0);
+  w: 800px;
+  h: 600px;
+  icon-size: 200px;
+  bg: #282828aa;
+  bg53: #28282888;
+  bgs: #282828f3;
+  bgd: #282828;
+  bg1: #3c3836aa;
+  black: #000000aa;
+  bg-bar: #151515aa;
+  fg: #ebdbb2;
+  fgbg: #ebdbb2aa;
+  ph: #3b3b3b;
+  sel: #1a73e9aa;
+}
+
+window {
+  background-color: @bg53;
+  anchor: north;
+  location: north;
+  border: 0px;
+  border-radius: 0px;
+  padding: 0px;
+  width: @w;
+  /* height: @h; */
+  children: [ mainbox ];
+}
+
+mainbox {
+  border: 0px;
+  padding: 0px;
+  children: [ inputbar,message,listview ];
+}
+
+message {
+    background-color: @fgbg;
+    text-color: @bgd;
+}
+
+textbox {
+    padding: 3px;
+}
+
+inputbar {
+  spacing: 0px;
+  text-color: @sel;
+  padding: 0px;
+  children: [ textbox-prompt-colon,entry ];
+}
+
+textbox-prompt-colon {
+  expand: false;
+  str: " yt: ";
+  text-color: @fg;
+  background-color: @bgs;
+  padding: 10px 5px 10px 0px;
+}
+
+entry {
+  spacing: 0;
+  padding: 10px 0;
+  text-color: @fg;
+  background-color: @bgs;
+  placeholder: "search...";
+  placeholder-color: @ph;
+}
+
+listview {
+  lines: 5;
+  border: 0px;
+  spacing: 0px;
+  scrollbar: false;
+  padding: 0px;
+  margin: 0px;
+  fixed-height: false;
+  fixed-columns: true;
+  padding: 0px;
+  margin: 0px;
+  background-color: @bg;
+}
+
+element {
+  border: 0px;
+  padding: -40px 10px -40px 0px;
+  margin: 0px;
+  text-color: @fg;
+  children: [ element-text, element-icon ];
+}
+
+element alternate.normal {
+  background-color: @bg1;
+}
+
+element normal.normal {
+  background-color: @bg;
+}
+
+element selected.normal {
+  background-color: @sel;
+  text-color: @fg;
+}
+
+element-text {
+  background-color: inherit;
+  text-color: inherit;
+  expand: true;
+  vertical-align: 0.5;
+  margin: 0px;
+  padding: 0px 0px 0px 10px;
+}
+
+element-icon {
+  size: @icon-size;
+  border: 0px;
+  background-color: @bg;
+}
+
+element-icon alternate.normal {
+  background-color: @black;
+}
+
+element-icon selected.normal {
+  background-color: @sel;
+}
